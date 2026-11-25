@@ -1,0 +1,22 @@
+# The development database. Start it with: npm run db:up
+# The password here is for local development only. The port is open on this computer only.
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: docuchat
+      POSTGRES_PASSWORD: docuchat
+      POSTGRES_DB: docuchat
+    ports:
+      - "127.0.0.1:5442:5432"
+    volumes:
+      - docuchat-db:/var/lib/postgresql
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U docuchat -d docuchat"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  docuchat-db:

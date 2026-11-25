@@ -1,0 +1,83 @@
+// The DocuChat database.
+// After a change here, run: npm run db:migrate -- --name describe_your_change
+// One change for each migration. Never edit a migration that is already applied.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  /// The bcrypt hash. The password itself is never stored.
+  passwordHash String
+  /// What the user may do: "user" or "admin". A string, so a new role needs no migration.
+  role         String    @default("user")
+  /// The plan: "free", "pro" or "enterprise".
+  tier         String    @default("free")
+  isActive     Boolean   @default(true)
+  /// Soft delete: null = not deleted. The time tells us WHEN, a boolean cannot.
+  deletedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  refreshTokens RefreshToken[]
+  usageLogs     UsageLog[]
+  conversations Conversation[]
+
+  @@index([email])
+}
+
+/// One row = one session (one login on one device).
+model RefreshToken {
+  id         String   @id @default(cuid())
+  userId     String
+  /// The SHA-256 hash of the refresh token. The token itself is never stored.
+  token      String   @unique
+  /// The User-Agent of the login. Later, the user can see and stop each session.
+  deviceInfo String?
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+/// What a user did and what it cost. Week 4 adds the tokens and the cost of each LLM call.
+model UsageLog {
+  id        String   @id @default(cuid())
+  userId    String
+  /// "signup", "login", and later "chat", "embedding" and so on.
+  action    String
+  tokens    Int      @default(0)
+  costUsd   Float    @default(0)
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([action])
+}
+
+/// A chat. Messages and the link to a document come in the later weeks.
+model Conversation {
+  id        String    @id @default(cuid())
+  userId    String
+  title     String
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
